@@ -1,4 +1,4 @@
-import { ElevenLabsClient } from "elevenlabs"; // التحقق من وجود OutputFormat
+import { ElevenLabsClient } from "elevenlabs";
 
 const client = new ElevenLabsClient({
   apiKey: process.env.NEXT_PUBLIC_ELEVEN_LABS_API_KEY!,

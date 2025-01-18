@@ -5,8 +5,6 @@ import { Button } from "./ui/button";
 import { X } from "lucide-react";
 import { TextSize, TranslatedTextareaProps } from "@/types/types";
 
-
-
 const TranslatedTextarea = React.forwardRef<
   HTMLTextAreaElement,
   TranslatedTextareaProps
@@ -90,8 +88,7 @@ const TranslatedTextarea = React.forwardRef<
       if (textarea?.current) {
         adjustHeight(textarea.current);
       }
-    }, [ref, text]);
-
+    }, [ref, text, adjustHeight]);
     return (
       <div
         className={cn(
