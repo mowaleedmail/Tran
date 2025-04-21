@@ -1,8 +1,9 @@
 import TextareasContainer from "@/components/container";
 
-export default function Home() {
+export default async function Home() {
+
   return (
-    <main className="flex flex-col items-center justify-center my-10 relative z-0">
+    <main className="flex flex-col max-w-6xl mx-auto items-center justify-center my-0 md:my-5 relative z-0">
       <TextareasContainer />
     </main>
   );

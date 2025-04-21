@@ -24,34 +24,25 @@ const Header: React.FC = () => {
       border-b
       border-gray-200
       h-[75px]
-      px-[150px]
       bg-white"
     >
       {/* Logo */}
-      <div className="flex items-center gap-[8px]">
-        <Image src="/Logo.png" alt="Logo" width={32} height={28} unoptimized />
-        <Image src="/Logo2.png" alt="Logo" width={56} height={18} unoptimized />
-      </div>
-
-      {/* Navigation Links */}
-      {/* <nav>
-        <ul className="flex space-x-6 items-center">
-          {navLinks.map((link) => (
-            <li key={link.href}>
-              <a
-                href={link.href}
-                className="text-gray-600 hover:text-blue-500 transition duration-300"
-              >
-                {link.label}
-              </a>
-            </li>
-          ))}
-        </ul>
-      </nav> */}
-
-      {/* Action Buttons */}
-      <div className="space-x-4">
-        <UserNav />
+      <div className="flex flex-row items-center justify-between w-full max-w-6xl mx-auto px-[25px] md:px-[0px]">
+        <div className="flex flex-row items-start justify-center gap-[8px]">
+          <Image src="/Logo.png" alt="Logo" width={32} height={28} />
+          <Image
+            src="/Logo2.png"
+            alt="Logo"
+            width={56}
+            height={18}
+            className="mt-1"
+          />
+        </div>
+  
+        {/* Action Buttons */}
+        <div className="space-x-4 items-end">
+          <UserNav />
+        </div>
       </div>
     </header>
   );

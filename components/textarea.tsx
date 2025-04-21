@@ -47,6 +47,7 @@ const TranslatedTextarea = React.forwardRef<
 
     useEffect(() => {
       const currentText = text;
+      // Update font size based on text length
       if (currentText.length > 600) {
         setDynamicTextSize("text-base");
       } else if (currentText.length > 350) {
@@ -55,20 +56,26 @@ const TranslatedTextarea = React.forwardRef<
         setDynamicTextSize("text-2xl");
       }
       setTextDirection(detectTextDirection(currentText));
-    }, [text, detectTextDirection]);
-
-    const adjustHeight = (textarea: HTMLTextAreaElement) => {
-      textarea.style.height = "auto";
-      const newHeight = Math.max(textarea.scrollHeight, 400);
-      textarea.style.height = `${newHeight}px`;
-      onSyncHeight?.(newHeight);
-    };
+      
+      // Calculate content length and send to parent for synchronization
+      const textLength = currentText.length;
+      onSyncHeight?.(textLength);
+    }, [text, detectTextDirection, onSyncHeight]);
 
     const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       const newValue = e.target.value;
       setText(newValue);
-      adjustHeight(e.target);
       onChange?.(e);
+    };
+
+    const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+      // Capture textarea element to avoid React event pooling issues
+      const textareaEl = e.currentTarget;
+      setTimeout(() => {
+        const newValue = textareaEl.value;
+        setText(newValue);
+        onChange?.({ target: textareaEl } as React.ChangeEvent<HTMLTextAreaElement>);
+      }, 0);
     };
 
     const handleClear = () => {
@@ -77,22 +84,16 @@ const TranslatedTextarea = React.forwardRef<
         target: { value: "" },
       } as React.ChangeEvent<HTMLTextAreaElement>);
 
-      // إضافة التركيز بعد التفريغ
+      // Focus after clearing
       if (ref && "current" in ref && ref.current) {
         ref.current.focus();
       }
     };
 
-    useEffect(() => {
-      const textarea = ref as React.RefObject<HTMLTextAreaElement>;
-      if (textarea?.current) {
-        adjustHeight(textarea.current);
-      }
-    }, [ref, text, adjustHeight]);
     return (
       <div
         className={cn(
-          "flex flex-col w-full border border-transparent transition-colors duration-200 focus-within:border-zinc-950 focus-within:border relative",
+          "flex flex-col w-full border-[1px] border-background md:focus-within:border-zinc-950 md:focus-within:border-[1px] relative",
           className
         )}
       >
@@ -103,13 +104,13 @@ const TranslatedTextarea = React.forwardRef<
             dir={textDirection}
             className={cn(
               dynamicTextSize,
-              "w-full pt-6 px-6 pb-0 resize-none focus:outline-none bg-transparent",
+              "w-full pt-6 px-6 pb-0 resize-none overflow-hidden focus:outline-none bg-transparent min-h-[200px] md:min-h-[400px]",
               textDirection === "rtl" && "text-right",
               wrapperClassName
             )}
             value={text}
             onChange={handleChange}
-            style={{ minHeight: "400px" }}
+            onPaste={handlePaste}
             {...props}
           />
           {text && !props.readOnly && (
@@ -117,17 +118,17 @@ const TranslatedTextarea = React.forwardRef<
               id="clear-button"
               variant="ghost"
               size="icon"
-              className="absolute top-[26px] right-[6px] h-7 w-7"
+              className="absolute right-0 hover:bg-red-200 rounded-none top-0 h-7 w-7 z-0"
               onClick={handleClear}
             >
-              <X size={20} strokeWidth={1.5} color="black" />
+              <X size={20} strokeWidth={1.5} color="red"/>
             </Button>
           )}
         </div>
         {children && (
           <div
             className={cn(
-              "w-full sticky bottom-0 flex items-center gap-2 py-2 px-6 bg-white/80 backdrop-blur-md",
+              "w-full sticky right-0 bottom-0 flex items-center gap-2 py-2 px-6 bg-white/80 backdrop-blur-md",
               buttonStyle
             )}
           >

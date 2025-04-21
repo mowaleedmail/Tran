@@ -29,7 +29,7 @@ export default function LanguageSelection({
 
   return (
     <div className="w-full">
-      <div className="space-y-2">
+      <div className="space-y-0">
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
             <Button
@@ -37,7 +37,7 @@ export default function LanguageSelection({
               variant="outline"
               role="combobox"
               aria-expanded={open}
-              className="justify-center items-center gap-1  border-none shadow-none rounded-[4px] bg-white font-normal outline-offset-0 hover:bg-background focus-visible:border-ring focus-visible:outline-[3px] focus-visible:outline-ring/20 h-8"
+              className="justify-center items-center gap-1 border-none shadow-none bg-white outline-offset-0 h-8 w-full"
             >
               <span
                 className={cn(
@@ -59,8 +59,8 @@ export default function LanguageSelection({
             </Button>
           </PopoverTrigger>
           <PopoverContent
-            className="w-full border-t-0 border-input mt-3 p-0 rounded-none rounded-b-md shadow-sm"
-            align="start"
+            className="w-full mt-0 p-0 rounded-md shadow-sm"
+            align="center"
           >
             <Command>
               <CommandInput placeholder="Search language..." />
