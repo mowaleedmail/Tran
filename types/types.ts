@@ -46,6 +46,7 @@ export const languages = [
 export interface LanguageSelectionProps {
   value: string;
   onChange: (value: string) => void;
+  exclude?: string;
 }
 
 export type TextSize = "text-base" | "text-lg" | "text-2xl";

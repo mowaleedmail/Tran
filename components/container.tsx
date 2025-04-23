@@ -73,7 +73,6 @@ export default function TextareasContainer() {
       });
       const data = await response.json();
       if (response.ok) {
-        setSourceLanguage(data.languageCode);
         return data.languageCode;
       } else {
         console.error(data.error);
@@ -89,21 +88,28 @@ export default function TextareasContainer() {
   const debouncedTranslateAndDetect = useMemo(
     () =>
       debounce(async (text: string) => {
-        if (text.trim()) {
-          // detect language and get code
-          const detectedLang = await detectLanguage(text);
-          // perform translation with detected language
-          const result = await translateText({
-            text,
-            sourceLanguage: detectedLang,
-            targetLanguage,
-          });
-          setTranslatedText(result);
-        } else {
+        if (!text.trim()) {
           setTranslatedText("");
+          return;
         }
+        // detect user language
+        const detectedLang = await detectLanguage(text);
+        const prevSource = sourceLanguage;
+        const prevTarget = targetLanguage;
+        // swap if matching to avoid duplication
+        const newTarget = detectedLang === prevTarget ? prevSource : prevTarget;
+        // update pickers
+        setSourceLanguage(detectedLang);
+        setTargetLanguage(newTarget);
+        // perform translation after swap
+        const result = await translateText({
+          text,
+          sourceLanguage: detectedLang,
+          targetLanguage: newTarget,
+        });
+        setTranslatedText(result);
       }, 1000),
-    [detectLanguage, translateText, targetLanguage]
+    [detectLanguage, translateText, sourceLanguage, targetLanguage]
   );
 
   // Cancel debounced on unmount
@@ -180,6 +186,7 @@ export default function TextareasContainer() {
               });
             }
           }}
+          exclude={targetLanguage}
         />
         <Button variant="custom" size="icon" onClick={switchLanguages}>
           <ArrowLeftRight
@@ -203,6 +210,7 @@ export default function TextareasContainer() {
               });
             }
           }}
+          exclude={sourceLanguage}
         />
       </div>
       <div className="flex md:flex-row flex-col justify-stretch items-stretch bg-transparent w-full max-h-[70vh] overflow-auto">

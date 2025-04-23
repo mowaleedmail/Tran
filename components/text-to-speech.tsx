@@ -2,7 +2,7 @@
 
 import { convertTextToSpeech } from "@/app/api/text-to-speech/elevenLabs";
 import { StopCircle, Volume2 } from "lucide-react";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 const TextToSpeechPlayer: React.FC<{ text: string; voiceId: string }> = ({
   text,
@@ -12,6 +12,11 @@ const TextToSpeechPlayer: React.FC<{ text: string; voiceId: string }> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    setAudioUrl(null);
+    setAudio(null);
+  }, [text]);
 
   const toggleRecording = async () => {
     if (isRecording) {

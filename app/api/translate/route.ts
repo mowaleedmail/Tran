@@ -17,7 +17,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const prompt = `Translate this text professionally, don't send any extras, just the translated text ${sourceLanguage} to ${targetLanguage}: ${text}`;
+    const prompt = `Please translate the following text from ${sourceLanguage} into ${targetLanguage} in a professional tone. Return only the translated text without any additional comments or formatting. Text: "${text}"`;
     const result = await model.generateContent(prompt);
     const response = result.response;
     const translatedText = response.text();

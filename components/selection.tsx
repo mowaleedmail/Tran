@@ -23,6 +23,7 @@ import { Check, ChevronDown } from "lucide-react";
 export default function LanguageSelection({
   value,
   onChange,
+  exclude,
 }: LanguageSelectionProps) {
   const id = useId();
   const [open, setOpen] = useState<boolean>(false);
@@ -47,7 +48,7 @@ export default function LanguageSelection({
               >
                 {value
                   ? languages.find((language) => language.value === value)
-                      ?.label
+                    ?.label
                   : "Detect language"}
               </span>
               <ChevronDown
@@ -67,21 +68,23 @@ export default function LanguageSelection({
               <CommandList>
                 <CommandEmpty>No language found.</CommandEmpty>
                 <CommandGroup>
-                  {languages.map((language) => (
-                    <CommandItem
-                      key={language.value}
-                      value={language.value}
-                      onSelect={(currentValue) => {
-                        onChange(currentValue);
-                        setOpen(false);
-                      }}
-                    >
-                      {language.label}
-                      {value === language.value && (
-                        <Check size={16} strokeWidth={2} className="ml-auto" />
-                      )}
-                    </CommandItem>
-                  ))}
+                  {languages
+                    .filter((language) => language.value !== exclude)
+                    .map((language) => (
+                      <CommandItem
+                        key={language.value}
+                        value={language.value}
+                        onSelect={(currentValue) => {
+                          onChange(currentValue);
+                          setOpen(false);
+                        }}
+                      >
+                        {language.label}
+                        {value === language.value && (
+                          <Check size={16} strokeWidth={2} className="ml-auto" />
+                        )}
+                      </CommandItem>
+                    ))}
                 </CommandGroup>
               </CommandList>
             </Command>
