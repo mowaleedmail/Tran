@@ -56,4 +56,6 @@ export interface TranslatedTextareaProps
   wrapperClassName?: string;
   buttonStyle?: string;
   onSyncHeight?: (height: number) => void;
+  dynamicHeight?: number;
+  fontSize?: string;
 }

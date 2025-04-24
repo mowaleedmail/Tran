@@ -19,6 +19,8 @@ const TranslatedTextarea = React.forwardRef<
       children,
       direction = "auto",
       onSyncHeight,
+      dynamicHeight,
+      fontSize,
       ...props
     },
     ref
@@ -83,9 +85,17 @@ const TranslatedTextarea = React.forwardRef<
             id={id}
             ref={resolvedRef}
             dir={textDirection}
+            style={dynamicHeight 
+              ? { 
+                  height: `${dynamicHeight}px`,
+                  ...(fontSize && fontSize.includes('px') ? { fontSize: fontSize } : {})
+                } 
+              : undefined
+            }
             className={cn(
-              "text-2xl",
-              "w-full pt-6 px-6 pb-0 resize-none overflow-hidden focus:outline-none bg-transparent md:min-h-[400px]",
+              // If fontSize includes 'text-' prefix, use it directly, otherwise use default
+              (fontSize && !fontSize.includes('px')) ? fontSize : "text-xl",
+              "w-full pt-6 px-6 pb-0 resize-none overflow-hidden focus:outline-none bg-transparent md:min-h-[450px]",
               textDirection === "rtl" && "text-right",
               wrapperClassName
             )}

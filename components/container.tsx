@@ -6,6 +6,7 @@ import LanguageSelection from "./selection";
 import { Button } from "./ui/button";
 import TranslatedTextarea from "./textarea";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useTextareaAdjustment } from "@/hooks/useTextareaAdjustment";
 import VoiceRecorder from "./voice-recorder";
 import TextToSpeechPlayer from "./text-to-speech";
 import debounce from "lodash/debounce";
@@ -22,20 +23,30 @@ export default function TextareasContainer() {
   const [translatedText, setTranslatedText] = useState("");
   const [sourceLanguage, setSourceLanguage] = useState("en");
   const [targetLanguage, setTargetLanguage] = useState("ar");
-  const [sourceLength, setSourceLength] = useState(0);
-  const [translatedLength, setTranslatedLength] = useState(0);
   const voiceId = "FTNCalFNG5bRnkkaP5Ug";
+
+  // Use the textarea adjustment hook for dynamic height and font size
+  const {
+    syncedHeight,
+    sourceFontSize,
+    targetFontSize,
+    updateSourceLength,
+    updateTargetLength
+  } = useTextareaAdjustment({
+    minHeight: 450,
+    fontSizeThreshold: 450
+  });
 
   const { translateText, isTranslating, cancelTranslation } = useTranslation();
 
   // Track source text length for synchronization
   const handleSourceTextLength = (length: number) => {
-    setSourceLength(length);
+    updateSourceLength(length);
   };
 
   // Track translated text length for synchronization
   const handleTranslatedTextLength = (length: number) => {
-    setTranslatedLength(length);
+    updateTargetLength(length);
   };
 
   // move detectLanguage above debouncedTranslateAndDetect to fix linter error
@@ -126,11 +137,6 @@ export default function TextareasContainer() {
     setTargetLanguage(tempLang);
     setSourceText(translatedText);
     setTranslatedText(sourceText);
-
-    // Update lengths when switching
-    const tempLength = sourceLength;
-    setSourceLength(translatedLength);
-    setTranslatedLength(tempLength);
   };
 
   const copyToClipboard = () => {
@@ -153,7 +159,7 @@ export default function TextareasContainer() {
   }, []);
 
   return (
-    <div className="flex flex-col md:min-h-[400px] container rounded-none md:rounded-lg border-none md:border bg-card border-gray-200">
+    <div className="flex flex-col md:min-h-[450px] container rounded-none md:rounded-lg border-none md:border bg-card border-gray-200">
       <div className="sticky top-[70px] z-40 bg-card w-full shadow-sm">
         <div className="flex flex-row gap-1 items-center justify-stretch border-b border-zinc-200 px-3 py-3">
           <LanguageSelection
@@ -208,6 +214,8 @@ export default function TextareasContainer() {
           wrapperClassName="w-full"
           buttonStyle="rounded-bl-lg"
           onSyncHeight={handleSourceTextLength}
+          dynamicHeight={syncedHeight}
+          fontSize={sourceFontSize}
         >
           <Button variant="custom" size="icon" className="bg-transparent">
             <Clipboard size={21} strokeWidth={1.5} className="text-gray-950" />
@@ -229,6 +237,8 @@ export default function TextareasContainer() {
             wrapperClassName="pr-9 relative w-full"
             buttonStyle="rounded-br-lg"
             onSyncHeight={handleTranslatedTextLength}
+            dynamicHeight={syncedHeight}
+            fontSize={targetFontSize}
           >
             <Button
               variant="custom"
