@@ -1,4 +1,3 @@
-//components\container.tsx.
 "use client";
 
 import { useRef, useState, useEffect, useCallback, useMemo } from "react";
@@ -11,11 +10,13 @@ import VoiceRecorder from "./voice-recorder";
 import TextToSpeechPlayer from "./text-to-speech";
 import debounce from "lodash/debounce";
 import { LanguagesIcon, LanguagesIconHandle } from "./ui/languages";
+import { TextareaRef } from "@/types/types";
 
 export default function TextareasContainer() {
-  const textarea1Ref = useRef<HTMLTextAreaElement>(null);
-  const textarea2Ref = useRef<HTMLTextAreaElement>(null);
+  const textarea1Ref = useRef<TextareaRef>(null);
+  const textarea2Ref = useRef<TextareaRef>(null);
   const languagesIconRef = useRef<LanguagesIconHandle>(null);
+  const isSynchronizingRef = useRef<boolean>(false);
 
   const [sourceText, setSourceText] = useState("");
   const [translatedText, setTranslatedText] = useState("");
@@ -27,41 +28,53 @@ export default function TextareasContainer() {
 
   const { translateText, isTranslating, cancelTranslation } = useTranslation();
 
-  // Set the same scroll position for both textareas based on the longer content
+  // Synchronize both textarea heights to be the same
   useEffect(() => {
+    // Only run synchronization on medium and larger screens
+    if (window.innerWidth < 768) return;
+    
+    // Skip rapid synchronization during typing
+    if (isSynchronizingRef.current) return;
+    
     if (textarea1Ref.current && textarea2Ref.current) {
-      // Calculate lines more accurately based on actual newlines and estimated line wrapping
-      const countTextLines = (text: string): number => {
-        // Estimate wrapped lines (assume 50 chars per line on average)
-        const charsPerLine = 50;
-        // Split by newlines and calculate wrap for each line
-        const lines = text.split('\n');
-        let wrappedLineCount = 0;
+      isSynchronizingRef.current = true;
+      
+      // Use a more significant delay to avoid race conditions with typing
+      setTimeout(() => {
+        // Make sure refs are still valid within the timeout
+        if (!textarea1Ref.current || !textarea2Ref.current) {
+          isSynchronizingRef.current = false;
+          return;
+        }
         
-        lines.forEach(line => {
-          wrappedLineCount += Math.ceil(line.length / charsPerLine);
-        });
+        // Only sync heights if there's a significant difference (more than 20px)
+        // to avoid constant small adjustments during typing
+        const height1 = textarea1Ref.current.scrollHeight || 0;
+        const height2 = textarea2Ref.current.scrollHeight || 0;
+        const heightDifference = Math.abs(height1 - height2);
         
-        // Total lines is the number of wrapped lines (which already accounts for newlines)
-        return Math.max(wrappedLineCount, 1); // Ensure at least 1 line
-      };
-      
-      const sourceLines = countTextLines(sourceText);
-      const translatedLines = countTextLines(translatedText);
-      const maxLines = Math.max(sourceLines, translatedLines);
-      
-      // Base height plus height per line
-      const baseHeight = 400; // Base height in pixels
-      const heightPerLine = 30; // pixels per line
-      const contentHeight = baseHeight + ((maxLines - 1) * heightPerLine); // Subtract 1 because base height includes first line
-      
-      // Set both min-height and height to ensure expansion
-      textarea1Ref.current.style.height = `${contentHeight}px`;
-      textarea2Ref.current.style.height = `${contentHeight}px`;
-      textarea1Ref.current.style.minHeight = `${contentHeight}px`;
-      textarea2Ref.current.style.minHeight = `${contentHeight}px`;
+        if (heightDifference > 20) {
+          // Use the maximum height for both textareas
+          const maxHeight = Math.max(height1, height2, 400); // Ensure minimum height of 400px
+          
+          // Apply the same height to both textareas using the enhanced ref method
+          if (textarea1Ref.current.autoResizeTextarea) {
+            textarea1Ref.current.autoResizeTextarea(maxHeight);
+          } else {
+            textarea1Ref.current.style.height = `${maxHeight}px`;
+          }
+          
+          if (textarea2Ref.current.autoResizeTextarea) {
+            textarea2Ref.current.autoResizeTextarea(maxHeight);
+          } else {
+            textarea2Ref.current.style.height = `${maxHeight}px`;
+          }
+        }
+        
+        isSynchronizingRef.current = false;
+      }, 300); // Longer delay to ensure content stabilizes first
     }
-  }, [sourceText, translatedText]); // Use the actual text rather than just length
+  }, [sourceText, translatedText]);
 
   // move detectLanguage above debouncedTranslateAndDetect to fix linter error
   const detectLanguage = useCallback(async (text: string): Promise<string> => {
@@ -84,6 +97,16 @@ export default function TextareasContainer() {
     }
   }, [sourceLanguage]);
 
+  // Track source text length for synchronization
+  const handleSourceTextLength = (length: number) => {
+    setSourceLength(length);
+  };
+
+  // Track translated text length for synchronization
+  const handleTranslatedTextLength = (length: number) => {
+    setTranslatedLength(length);
+  };
+
   // Debounced translate + detect language to limit API calls when typing
   const debouncedTranslateAndDetect = useMemo(
     () =>
@@ -92,6 +115,17 @@ export default function TextareasContainer() {
           setTranslatedText("");
           return;
         }
+        
+        // Store current height before translation
+        let currentHeight = 0;
+        if (textarea2Ref.current && window.innerWidth >= 768) {
+          currentHeight = textarea2Ref.current.offsetHeight;
+          // Apply min-height to prevent shrinking during translation
+          if (currentHeight > 0) {
+            textarea2Ref.current.style.minHeight = `${currentHeight}px`;
+          }
+        }
+        
         // detect user language
         const detectedLang = await detectLanguage(text);
         const prevSource = sourceLanguage;
@@ -133,21 +167,16 @@ export default function TextareasContainer() {
     cancelTranslation();
     debouncedTranslateAndDetect.cancel();
     setSourceText(text);
-    setTranslatedText("");
+    
+    // Don't clear translated text immediately to prevent textarea shrinking
+    // Only clear if the source text is empty
+    if (!text.trim()) {
+      setTranslatedText("");
+    }
 
     if (text.trim()) {
       debouncedTranslateAndDetect(text);
     }
-  };
-
-  // Track source text length for synchronization
-  const handleSourceTextLength = (length: number) => {
-    setSourceLength(length);
-  };
-
-  // Track translated text length for synchronization
-  const handleTranslatedTextLength = (length: number) => {
-    setTranslatedLength(length);
   };
 
   const switchLanguages = () => {
@@ -169,8 +198,72 @@ export default function TextareasContainer() {
     }
   };
 
+  // Preserve height during translation
+  useEffect(() => {
+    // Skip on small screens
+    if (window.innerWidth < 768) return;
+    
+    if (isTranslating && textarea2Ref.current) {
+      // Store current height before translation starts
+      const currentHeight = textarea2Ref.current.offsetHeight;
+      if (currentHeight > 0) {
+        // Apply min-height to prevent shrinking
+        textarea2Ref.current.style.minHeight = `${currentHeight}px`;
+      }
+    } else if (!isTranslating && textarea2Ref.current) {
+      // Reset min-height when translation is complete to allow normal resizing
+      // Keep a small delay to ensure the text is rendered first
+      setTimeout(() => {
+        if (textarea2Ref.current) {
+          // On medium screens, still maintain the minimum height
+          const minHeight = window.innerWidth >= 768 ? '400px' : 'auto';
+          textarea2Ref.current.style.minHeight = minHeight;
+          
+          // After resetting, re-synchronize heights
+          if (textarea1Ref.current && textarea2Ref.current && window.innerWidth >= 768) {
+            const height1 = textarea1Ref.current.scrollHeight || 0;
+            const height2 = textarea2Ref.current.scrollHeight || 0;
+            const maxHeight = Math.max(height1, height2, 400);
+            
+            textarea1Ref.current.style.height = `${maxHeight}px`;
+            textarea2Ref.current.style.height = `${maxHeight}px`;
+          }
+        }
+      }, 150);
+    }
+  }, [isTranslating]);
+
+  // Add responsive listener to handle window resizing
+  useEffect(() => {
+    const handleResize = () => {
+      // Clear synchronized heights on small screens
+      if (window.innerWidth < 768) {
+        if (textarea1Ref.current) {
+          textarea1Ref.current.style.height = 'auto';
+        }
+        if (textarea2Ref.current) {
+          textarea2Ref.current.style.height = 'auto';
+        }
+      }
+      // Re-synchronize on medium+ screens
+      else if (textarea1Ref.current && textarea2Ref.current) {
+        const height1 = textarea1Ref.current.scrollHeight || 0;
+        const height2 = textarea2Ref.current.scrollHeight || 0;
+        const maxHeight = Math.max(height1, height2, 400);
+        
+        textarea1Ref.current.style.height = `${maxHeight}px`;
+        textarea2Ref.current.style.height = `${maxHeight}px`;
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
+
   return (
-    <div className="flex flex-col min-h-[400px] container rounded-none md:rounded-lg border-none md:border bg-card border-gray-200">
+    <div className="flex flex-col h-auto md:min-h-[400px] container rounded-none md:rounded-lg border-none md:border bg-card border-gray-200">
       <div className="flex flex-row gap-1 items-center justify-stretch border-b border-zinc-200 px-3 py-3">
         <LanguageSelection
           value={sourceLanguage}
@@ -213,7 +306,7 @@ export default function TextareasContainer() {
           exclude={sourceLanguage}
         />
       </div>
-      <div className="flex md:flex-row flex-col justify-stretch items-stretch bg-transparent w-full max-h-[70vh] overflow-auto">
+      <div className="flex md:flex-row flex-col justify-stretch items-stretch bg-transparent w-full">
         <TranslatedTextarea
           ref={textarea1Ref}
           value={sourceText}
@@ -262,7 +355,11 @@ export default function TextareasContainer() {
           {isTranslating && (
             <div
               className="absolute left-0 top-0 w-full flex items-center justify-center z-50 pointer-events-none bg-background/60"
-              style={{ height: textarea1Ref.current?.offsetHeight + 'px' }}
+              style={{ 
+                height: textarea2Ref.current?.offsetHeight 
+                  ? `${textarea2Ref.current.offsetHeight}px` 
+                  : '100%' 
+              }}
             >
               <div>
                 <LanguagesIcon ref={languagesIconRef} size={40} className="text-primary" />
