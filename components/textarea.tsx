@@ -60,20 +60,18 @@ const TranslatedTextarea = React.forwardRef<
           textarea.style.height = `${externalHeight}px`;
           lastHeightRef.current = externalHeight;
         } else {
-          // Check if the content actually changed significantly before resizing
-          const currentScrollHeight = textarea.scrollHeight;
-          const heightDifference = Math.abs(currentScrollHeight - lastHeightRef.current);
+          // First reset height to auto to get accurate scrollHeight
+          textarea.style.height = 'auto';
           
-          // Only resize if there's a significant change in height (more than 10px)
-          // or if this is the first resize
-          if (lastHeightRef.current === 0 || heightDifference > 10) {
-            // Reset height temporarily to get the correct scrollHeight
-            textarea.style.height = 'auto';
-            
-            // Set the height to scrollHeight to fit all content
-            textarea.style.height = `${textarea.scrollHeight}px`;
-            lastHeightRef.current = textarea.scrollHeight;
-          }
+          // Then measure exact content height
+          const contentHeight = Math.max(
+            textarea.scrollHeight,
+            window.innerWidth >= 768 ? 400 : 200
+          );
+          
+          // Set exact content height - no extra space
+          textarea.style.height = `${contentHeight}px`;
+          lastHeightRef.current = contentHeight;
         }
         
         // Calculate content length and send to parent for synchronization
@@ -86,13 +84,24 @@ const TranslatedTextarea = React.forwardRef<
       }
     }, [resolvedRef, text.length, onSyncHeight]);
     
-    // Create a debounced version of autoResizeTextarea to avoid rapid resizing during typing
-    const debouncedAutoResize = useCallback(
-      debounce((externalHeight?: number) => {
+    // Create a debounced version of autoResizeTextarea using useRef to avoid recreation
+    const debouncedResizeRef = useRef<ReturnType<typeof debounce> | null>(null);
+    
+    // Set up the debounced function when dependencies change
+    useEffect(() => {
+      debouncedResizeRef.current = debounce((externalHeight?: number) => {
         autoResizeTextarea(externalHeight);
-      }, 100),
-      [autoResizeTextarea]
-    );
+      }, 100);
+      
+      return () => {
+        debouncedResizeRef.current?.cancel();
+      };
+    }, [autoResizeTextarea]);
+    
+    // Create a stable callback that uses the current debounced function
+    const debouncedAutoResize = useCallback((externalHeight?: number) => {
+      debouncedResizeRef.current?.(externalHeight);
+    }, []);
 
     // Expose the autoResize function to parent through ref
     useEffect(() => {
@@ -143,12 +152,47 @@ const TranslatedTextarea = React.forwardRef<
     };
 
     const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
-      // Capture textarea element to avoid React event pooling issues
+      // Prevent default to handle paste manually
+      // e.preventDefault();
+      
+      // Store cursor position
       const textareaEl = e.currentTarget;
+      const selectionStart = textareaEl.selectionStart || 0;
+      
+      // Process paste immediately
       setTimeout(() => {
         const newValue = textareaEl.value;
         setText(newValue);
         onChange?.({ target: textareaEl } as React.ChangeEvent<HTMLTextAreaElement>);
+        
+        // Force immediate and precise resize without debounce
+        if (textareaEl.scrollHeight > 0) {
+          // First reset height to get accurate scrollHeight
+          textareaEl.style.height = 'auto';
+          
+          // Then set exact height needed (no extra space)
+          const exactHeight = Math.max(
+            textareaEl.scrollHeight,
+            window.innerWidth >= 768 ? 400 : 200
+          );
+          textareaEl.style.height = `${exactHeight}px`;
+          lastHeightRef.current = exactHeight;
+        }
+        
+        // Critical: keep cursor position at insertion point
+        if (textareaEl === document.activeElement) {
+          textareaEl.selectionStart = selectionStart;
+          textareaEl.selectionEnd = selectionStart;
+          
+          // Maintain scroll position at insertion point, not bottom
+          // Calculate an appropriate scroll position that shows the insertion point
+          const lineHeight = parseInt(getComputedStyle(textareaEl).lineHeight) || 20;
+          const approxInsertionLine = Math.floor(selectionStart / 40); // Approx 40 chars per line
+          const idealScrollPosition = Math.max(0, (approxInsertionLine * lineHeight) - 100);
+          
+          // Apply the scroll position
+          textareaEl.scrollTop = idealScrollPosition;
+        }
       }, 0);
     };
 

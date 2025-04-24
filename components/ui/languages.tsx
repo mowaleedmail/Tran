@@ -1,22 +1,23 @@
-'use client';
+"use client"
 
-import type { Variants } from 'motion/react';
-import { motion, useAnimation } from 'motion/react';
-import type { HTMLAttributes } from 'react';
-import { forwardRef, useCallback, useImperativeHandle, useRef, useEffect, useState } from 'react';
-import { cn } from '@/lib/utils';
+import type React from "react"
+
+import type { Variants } from "motion/react"
+import { motion, useAnimation } from "motion/react"
+import type { HTMLAttributes } from "react"
+import { forwardRef, useCallback, useImperativeHandle, useRef, useEffect } from "react"
+import { cn } from "@/lib/utils"
 
 export interface LanguagesIconHandle {
-  startAnimation: () => void;
-  stopAnimation: () => void;
+  startAnimation: () => void
+  stopAnimation: () => void
 }
 
 interface LanguagesIconProps extends HTMLAttributes<HTMLDivElement> {
-  size?: number;
+  size?: number
 }
 
 const pathVariants: Variants = {
-  initial: { opacity: 0, pathLength: 0, pathOffset: 1 },
   normal: { opacity: 1, pathLength: 1, pathOffset: 0 },
   animate: (custom: number) => ({
     opacity: [0, 1],
@@ -25,101 +26,112 @@ const pathVariants: Variants = {
     transition: {
       opacity: { duration: 0.01, delay: custom * 0.1 },
       pathLength: {
-        type: 'spring',
+        type: "spring",
         duration: 0.5,
         bounce: 0,
         delay: custom * 0.1,
-        repeat: Infinity,
-        repeatType: 'loop',
-        repeatDelay: 0.2,
       },
-      pathOffset: {
-        repeat: Infinity,
-        repeatType: 'loop',
-        repeatDelay: 0.2,
-      }
     },
   }),
-};
+}
 
 const svgVariants: Variants = {
-  initial: { opacity: 0 },
   normal: { opacity: 1 },
   animate: {
     opacity: 1,
     transition: {
       staggerChildren: 0.1,
       delayChildren: 0.2,
-      repeat: Infinity,
-      repeatDelay: 0.5,
     },
   },
-};
+}
 
 const LanguagesIcon = forwardRef<LanguagesIconHandle, LanguagesIconProps>(
   ({ onMouseEnter, onMouseLeave, className, size = 28, ...props }, ref) => {
-    const svgControls = useAnimation();
-    const pathControls = useAnimation();
-    const [animationState, setAnimationState] = useState<'normal' | 'animate'>('normal');
-    const isControlledRef = useRef(false);
-    const isMountedRef = useRef(false);
+    const svgControls = useAnimation()
+    const pathControls = useAnimation()
 
-    // Handle animation state changes after component is mounted
-    useEffect(() => {
-      isMountedRef.current = true;
-      
-      if (isControlledRef.current) {
-        svgControls.start(animationState);
-        pathControls.start(animationState);
-      }
-      
-      return () => {
-        isMountedRef.current = false;
-      };
-    }, [svgControls, pathControls, animationState]);
+    const isControlledRef = useRef(false)
 
     useImperativeHandle(ref, () => {
-      isControlledRef.current = true;
+      isControlledRef.current = true
 
       return {
         startAnimation: () => {
-          setAnimationState('animate');
+          svgControls.start("animate")
+          pathControls.start("animate")
         },
         stopAnimation: () => {
-          setAnimationState('normal');
+          svgControls.start("normal")
+          pathControls.start("normal")
         },
-      };
-    }, []);
+      }
+    })
+
+    const startAnimation = useCallback(() => {
+      svgControls.start("animate")
+      pathControls.start("animate")
+    }, [pathControls, svgControls])
+
+    const resetAnimation = useCallback(() => {
+      svgControls.start("normal")
+      pathControls.start("normal")
+    }, [pathControls, svgControls])
+
+    // Set up infinite animation loop
+    useEffect(() => {
+      let animationInterval: NodeJS.Timeout
+
+      const runAnimationLoop = () => {
+        startAnimation()
+
+        // Reset and restart animation every 2 seconds
+        animationInterval = setInterval(() => {
+          resetAnimation()
+
+          // Small delay before starting the next animation cycle
+          setTimeout(() => {
+            startAnimation()
+          }, 100)
+        }, 2000)
+      }
+
+      // Start the animation loop
+      runAnimationLoop()
+
+      // Clean up interval on unmount
+      return () => {
+        clearInterval(animationInterval)
+      }
+    }, [startAnimation, resetAnimation])
 
     const handleMouseEnter = useCallback(
       (e: React.MouseEvent<HTMLDivElement>) => {
-        if (!isControlledRef.current && isMountedRef.current) {
-          svgControls.start('animate');
-          pathControls.start('animate');
+        if (!isControlledRef.current) {
+          onMouseEnter?.(e)
         } else {
-          onMouseEnter?.(e);
+          onMouseEnter?.(e)
         }
       },
-      [onMouseEnter, pathControls, svgControls]
-    );
+      [onMouseEnter],
+    )
 
     const handleMouseLeave = useCallback(
       (e: React.MouseEvent<HTMLDivElement>) => {
-        if (!isControlledRef.current && isMountedRef.current) {
-          svgControls.start('normal');
-          pathControls.start('normal');
+        if (!isControlledRef.current) {
+          onMouseLeave?.(e)
         } else {
-          onMouseLeave?.(e);
+          onMouseLeave?.(e)
         }
       },
-      [svgControls, pathControls, onMouseLeave]
-    );
+      [onMouseLeave],
+    )
 
     return (
       <div
         className={cn(
           `cursor-pointer select-none p-2 hover:bg-accent rounded-md transition-colors duration-200 flex items-center justify-center`,
-          className
+          className,
         )}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
@@ -136,57 +148,20 @@ const LanguagesIcon = forwardRef<LanguagesIconHandle, LanguagesIconProps>(
           strokeLinecap="round"
           strokeLinejoin="round"
           variants={svgVariants}
-          initial="initial"
           animate={svgControls}
         >
-          <motion.path
-            d="m5 8 6 6"
-            variants={pathVariants}
-            custom={3}
-            initial="initial"
-            animate={pathControls}
-          />
-          <motion.path
-            d="m4 14 6-6 3-3"
-            variants={pathVariants}
-            custom={2}
-            initial="initial"
-            animate={pathControls}
-          />
-          <motion.path
-            d="M2 5h12"
-            variants={pathVariants}
-            custom={1}
-            initial="initial"
-            animate={pathControls}
-          />
-          <motion.path
-            d="M7 2h1"
-            variants={pathVariants}
-            custom={0}
-            initial="initial"
-            animate={pathControls}
-          />
-          <motion.path
-            d="m22 22-5-10-5 10"
-            variants={pathVariants}
-            custom={3}
-            initial="initial"
-            animate={pathControls}
-          />
-          <motion.path
-            d="M14 18h6"
-            variants={pathVariants}
-            custom={3}
-            initial="initial"
-            animate={pathControls}
-          />
+          <motion.path d="m5 8 6 6" variants={pathVariants} custom={3} animate={pathControls} />
+          <motion.path d="m4 14 6-6 3-3" variants={pathVariants} custom={2} animate={pathControls} />
+          <motion.path d="M2 5h12" variants={pathVariants} custom={1} animate={pathControls} />
+          <motion.path d="M7 2h1" variants={pathVariants} custom={0} animate={pathControls} />
+          <motion.path d="m22 22-5-10-5 10" variants={pathVariants} custom={3} animate={pathControls} />
+          <motion.path d="M14 18h6" variants={pathVariants} custom={3} animate={pathControls} />
         </motion.svg>
       </div>
-    );
-  }
-);
+    )
+  },
+)
 
-LanguagesIcon.displayName = 'LanguagesIcon';
+LanguagesIcon.displayName = "LanguagesIcon"
 
-export { LanguagesIcon };
+export { LanguagesIcon }
