@@ -23,7 +23,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
-  themeColor: "#000000",
+  themeColor: "#ffffff",
 };
 
 export const metadata: Metadata = {
@@ -39,7 +39,7 @@ export const metadata: Metadata = {
     { rel: "apple-touch-icon", sizes: "180x180", url: "/icons/icon-180x180.png" },
     { rel: "icon", type: "image/png", sizes: "32x32", url: "/icons/icon-32x32.png" },
     { rel: "icon", type: "image/png", sizes: "16x16", url: "/icons/icon-16x16.png" },
-    { rel: "mask-icon", url: "/icons/icon-512x512.png", color: "#000000" },
+    { rel: "mask-icon", url: "/icons/icon-512x512.png", color: "#ffffff" },
   ],
 };
 
@@ -53,7 +53,7 @@ export default function RootLayout({
       <head>
         <meta name="application-name" content="Tran" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="white" />
         <meta name="apple-mobile-web-app-title" content="Tran" />
         <meta name="format-detection" content="telephone=no" />
         <meta name="mobile-web-app-capable" content="yes" />
