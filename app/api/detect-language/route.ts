@@ -20,36 +20,15 @@ export async function POST(request: Request) {
 
     const prompt = `Identify the language of this text: ${text}`;
     const result = await model.generateContent(prompt);
-    const response = result.response;
-    let detectedLanguageLabel = response.text().trim();
+      const responseText = result.response.text().trim();
 
-    // استخدام تعبير منتظم لاستخراج اسم اللغة من النص
-    const languageMatch = detectedLanguageLabel.match(
-      /(Arabic|English|French|Spanish|German)/i
+    // Find a supported language by checking if the response includes its label
+    const matched = languages.find((lang) =>
+      responseText.toLowerCase().includes(lang.label.toLowerCase())
     );
-    if (languageMatch) {
-      detectedLanguageLabel = languageMatch[0];
-    } else {
-      return NextResponse.json(
-        { error: "Could not extract language name", detectedLanguageLabel },
-        { status: 400 }
-      );
-    }
-
-    // البحث في قائمة اللغات عن اللغة المطابقة
-    const matchedLanguage = languages.find(
-      (lang) => lang.label.toLowerCase() === detectedLanguageLabel.toLowerCase()
-    );
-
-    if (!matchedLanguage) {
-      return NextResponse.json(
-        { error: "Language not supported", detectedLanguageLabel },
-        { status: 400 }
-      );
-    }
-
-    // إرجاع رمز اللغة فقط
-    return NextResponse.json({ languageCode: matchedLanguage.value });
+    // Default to English if no match found
+    const languageCode = matched ? matched.value : 'en';
+    return NextResponse.json({ languageCode });
   } catch (error) {
     console.error("Language detection error:", error);
     return NextResponse.json(

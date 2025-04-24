@@ -76,7 +76,7 @@ const TranslatedTextarea = React.forwardRef<
     return (
       <div
         className={cn(
-          "flex flex-col w-full h-full border-[1px] border-background md:focus-within:border-zinc-950 md:focus-within:border-[1px] relative",
+          "flex flex-col w-full h-full border-[1px] border-background md:focus-within:border-zinc-950 md:focus-within:border-[1px] relative p-[1px]",
           className
         )}
       >
@@ -95,7 +95,7 @@ const TranslatedTextarea = React.forwardRef<
             className={cn(
               // If fontSize includes 'text-' prefix, use it directly, otherwise use default
               (fontSize && !fontSize.includes('px')) ? fontSize : "text-xl",
-              "w-full pt-6 px-6 pb-0 resize-none overflow-hidden focus:outline-none bg-transparent md:min-h-[450px]",
+              "w-full pt-6 px-6 pb-0 resize-none overflow-hidden focus:outline-none bg-transparent",
               textDirection === "rtl" && "text-right",
               wrapperClassName
             )}
@@ -108,17 +108,17 @@ const TranslatedTextarea = React.forwardRef<
               id="clear-button"
               variant="ghost"
               size="icon"
-              className="absolute right-0 hover:bg-red-200 rounded-none top-0 h-7 w-7 z-0"
+              className="sticky top-[130px] z-20 hover:bg-red-200 rounded-none h-9 w-9"
               onClick={handleClear}
             >
-              <X size={20} strokeWidth={1.5} color="red"/>
+              <X size={24} strokeWidth={1.5} color="red"/>
             </Button>
           )}
         </div>
         {children && (
           <div
             className={cn(
-              "w-full sticky right-0 bottom-0 flex items-center gap-2 py-2 px-6 bg-white/80 backdrop-blur-md",
+              "w-full sticky right-0 left-0 bottom-0 flex items-center gap-2 py-2 px-6 bg-white/80 backdrop-blur-md h-14",
               buttonStyle
             )}
           >

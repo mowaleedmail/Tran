@@ -25,7 +25,10 @@ export default function TextareasContainer() {
   const [targetLanguage, setTargetLanguage] = useState("ar");
   const voiceId = "FTNCalFNG5bRnkkaP5Ug";
 
-  // Use the textarea adjustment hook for dynamic height and font size
+  // Determine if screen is medium (md) or larger to apply responsive min-height
+  const [isMdOrLarger, setIsMdOrLarger] = useState<boolean>(false);
+
+  // Use the textarea adjustment hook for dynamic height and font size with responsive minHeight
   const {
     syncedHeight,
     sourceFontSize,
@@ -33,7 +36,7 @@ export default function TextareasContainer() {
     updateSourceLength,
     updateTargetLength
   } = useTextareaAdjustment({
-    minHeight: 450,
+    minHeight: isMdOrLarger ? 450 : 0,
     fontSizeThreshold: 450
   });
 
@@ -158,6 +161,17 @@ export default function TextareasContainer() {
     return () => window.removeEventListener("resize", updateWrapperCenter);
   }, []);
 
+  // Update isMdOrLarger on mount and when viewport changes (client-side only)
+  useEffect(() => {
+    // useEffect only runs on client, so window is safe
+    const mediaQuery = window.matchMedia('(min-width: 768px)');
+    // Set initial value
+    setIsMdOrLarger(mediaQuery.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMdOrLarger(e.matches);
+    mediaQuery.addEventListener('change', handler);
+    return () => mediaQuery.removeEventListener('change', handler);
+  }, []);
+
   return (
     <div className="flex flex-col md:min-h-[450px] container rounded-none md:rounded-lg border-none md:border bg-card border-gray-200">
       <div className="sticky top-[70px] z-40 bg-card w-full shadow-sm">
@@ -185,6 +199,7 @@ export default function TextareasContainer() {
               className="text-gray-950"
             />
           </Button>
+          
           <LanguageSelection
             value={targetLanguage}
             onChange={(newLanguage) => {
@@ -210,7 +225,7 @@ export default function TextareasContainer() {
           value={sourceText}
           onChange={(e) => handleSourceTextChange(e.target.value)}
           placeholder="Enter text to translate"
-          className="md:focus-within:rounded-bl-lg w-full"
+          className="md:focus-within:rounded-bl-lg w-full border-0 md:border-r border-gray-200"
           wrapperClassName="w-full"
           buttonStyle="rounded-bl-lg"
           onSyncHeight={handleSourceTextLength}
