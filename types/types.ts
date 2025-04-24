@@ -49,15 +49,8 @@ export interface LanguageSelectionProps {
   exclude?: string;
 }
 
-export type TextSize = "text-base" | "text-lg" | "text-2xl";
-
-export interface TextareaRef extends HTMLTextAreaElement {
-  autoResizeTextarea?: (height?: number) => void;
-}
-
 export interface TranslatedTextareaProps
   extends React.ComponentProps<"textarea"> {
-  textSize?: TextSize;
   children?: React.ReactNode;
   direction?: "rtl" | "ltr" | "auto";
   wrapperClassName?: string;

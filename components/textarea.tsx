@@ -3,11 +3,10 @@ import React, { useEffect, useState, useId, useCallback, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
 import { X } from "lucide-react";
-import { TextSize, TranslatedTextareaProps, TextareaRef } from "@/types/types";
-import debounce from "lodash/debounce";
+import { TranslatedTextareaProps } from "@/types/types";
 
 const TranslatedTextarea = React.forwardRef<
-  TextareaRef,
+  HTMLTextAreaElement,
   TranslatedTextareaProps
 >(
   (
@@ -15,7 +14,6 @@ const TranslatedTextarea = React.forwardRef<
       wrapperClassName,
       buttonStyle,
       className,
-      textSize = "text-2xl",
       value,
       onChange,
       children,
@@ -26,15 +24,12 @@ const TranslatedTextarea = React.forwardRef<
     ref
   ) => {
     const id = useId();
-    const internalRef = useRef<TextareaRef | null>(null);
-    const resolvedRef = (ref as React.RefObject<TextareaRef>) || internalRef;
-    const [dynamicTextSize, setDynamicTextSize] = useState<TextSize>(textSize);
+    const internalRef = useRef<HTMLTextAreaElement | null>(null);
+    const resolvedRef = (ref as React.RefObject<HTMLTextAreaElement>) || internalRef;
     const [text, setText] = useState<string>((value as string) || "");
     const [textDirection, setTextDirection] = useState<"rtl" | "ltr" | "auto">(
       direction
     );
-    const lastHeightRef = useRef<number>(0);
-    const resizeInProgressRef = useRef<boolean>(false);
     
     const detectTextDirection = useCallback(
       (content: string) => {
@@ -46,154 +41,22 @@ const TranslatedTextarea = React.forwardRef<
       [direction]
     );
 
-    // Auto-resize textarea to fit content
-    const autoResizeTextarea = useCallback((externalHeight?: number) => {
-      const textarea = resolvedRef.current;
-      if (!textarea || resizeInProgressRef.current) return;
-      
-      resizeInProgressRef.current = true;
-      
-      try {
-        // Skip external height enforcement on small screens (mobile)
-        if (externalHeight && window.innerWidth >= 768) {
-          // If external height is provided and not on mobile, use it directly
-          textarea.style.height = `${externalHeight}px`;
-          lastHeightRef.current = externalHeight;
-        } else {
-          // First reset height to auto to get accurate scrollHeight
-          textarea.style.height = 'auto';
-          
-          // Then measure exact content height
-          const contentHeight = Math.max(
-            textarea.scrollHeight,
-            window.innerWidth >= 768 ? 400 : 200
-          );
-          
-          // Set exact content height - no extra space
-          textarea.style.height = `${contentHeight}px`;
-          lastHeightRef.current = contentHeight;
-        }
-        
-        // Calculate content length and send to parent for synchronization
-        onSyncHeight?.(text.length);
-      } finally {
-        // Release the lock after a short delay to prevent rapid consecutive resizes
-        setTimeout(() => {
-          resizeInProgressRef.current = false;
-        }, 50);
-      }
-    }, [resolvedRef, text.length, onSyncHeight]);
-    
-    // Create a debounced version of autoResizeTextarea using useRef to avoid recreation
-    const debouncedResizeRef = useRef<ReturnType<typeof debounce> | null>(null);
-    
-    // Set up the debounced function when dependencies change
-    useEffect(() => {
-      debouncedResizeRef.current = debounce((externalHeight?: number) => {
-        autoResizeTextarea(externalHeight);
-      }, 100);
-      
-      return () => {
-        debouncedResizeRef.current?.cancel();
-      };
-    }, [autoResizeTextarea]);
-    
-    // Create a stable callback that uses the current debounced function
-    const debouncedAutoResize = useCallback((externalHeight?: number) => {
-      debouncedResizeRef.current?.(externalHeight);
-    }, []);
-
-    // Expose the autoResize function to parent through ref
-    useEffect(() => {
-      if (ref && typeof ref === 'object' && (ref as React.RefObject<TextareaRef>).current) {
-        // Extend the ref object with our custom method
-        const currentRef = (ref as React.RefObject<TextareaRef>).current;
-        if (currentRef) {
-          // We're exposing the non-debounced version for parent synchronization
-          // to ensure immediate height adjustments from parent component
-          currentRef.autoResizeTextarea = autoResizeTextarea;
-        }
-      }
-    }, [ref, autoResizeTextarea]);
-
     useEffect(() => {
       setText((value as string) || "");
     }, [value]);
 
     useEffect(() => {
       const currentText = text;
-      // Update font size based on text length
-      if (currentText.length > 600) {
-        setDynamicTextSize("text-base");
-      } else if (currentText.length > 350) {
-        setDynamicTextSize("text-lg");
-      } else {
-        setDynamicTextSize("text-2xl");
-      }
       setTextDirection(detectTextDirection(currentText));
       
-      // Use debounced resize when text changes due to typing
-      debouncedAutoResize();
-    }, [text, detectTextDirection, debouncedAutoResize]);
-
-    // Initial auto-resize on mount and when value changes externally
-    useEffect(() => {
-      // For external value changes, use immediate resize rather than debounced
-      autoResizeTextarea();
-      // Add a slight delay to ensure content is rendered
-      const timer = setTimeout(autoResizeTextarea, 50);
-      return () => clearTimeout(timer);
-    }, [value, autoResizeTextarea]);
+      // Calculate content length and send to parent for synchronization
+      onSyncHeight?.(text.length);
+    }, [text, detectTextDirection, onSyncHeight]);
 
     const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       const newValue = e.target.value;
       setText(newValue);
       onChange?.(e);
-    };
-
-    const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
-      // Prevent default to handle paste manually
-      // e.preventDefault();
-      
-      // Store cursor position
-      const textareaEl = e.currentTarget;
-      const selectionStart = textareaEl.selectionStart || 0;
-      
-      // Process paste immediately
-      setTimeout(() => {
-        const newValue = textareaEl.value;
-        setText(newValue);
-        onChange?.({ target: textareaEl } as React.ChangeEvent<HTMLTextAreaElement>);
-        
-        // Force immediate and precise resize without debounce
-        if (textareaEl.scrollHeight > 0) {
-          // First reset height to get accurate scrollHeight
-          textareaEl.style.height = 'auto';
-          
-          // Then set exact height needed (no extra space)
-          const exactHeight = Math.max(
-            textareaEl.scrollHeight,
-            window.innerWidth >= 768 ? 400 : 200
-          );
-          textareaEl.style.height = `${exactHeight}px`;
-          lastHeightRef.current = exactHeight;
-        }
-        
-        // Critical: keep cursor position at insertion point
-        if (textareaEl === document.activeElement) {
-          textareaEl.selectionStart = selectionStart;
-          textareaEl.selectionEnd = selectionStart;
-          
-          // Maintain scroll position at insertion point, not bottom
-          // Calculate an appropriate scroll position that shows the insertion point
-          const lineHeight = parseInt(getComputedStyle(textareaEl).lineHeight) || 20;
-          const approxInsertionLine = Math.floor(selectionStart / 40); // Approx 40 chars per line
-          const idealScrollPosition = Math.max(0, (approxInsertionLine * lineHeight) - 100);
-          
-          // Apply the scroll position
-          textareaEl.scrollTop = idealScrollPosition;
-        }
-      }, 0);
     };
 
     const handleClear = () => {
@@ -211,7 +74,7 @@ const TranslatedTextarea = React.forwardRef<
     return (
       <div
         className={cn(
-          "flex flex-col w-full border-[1px] border-background md:focus-within:border-zinc-950 md:focus-within:border-[1px] relative",
+          "flex flex-col w-full h-full border-[1px] border-background md:focus-within:border-zinc-950 md:focus-within:border-[1px] relative",
           className
         )}
       >
@@ -221,14 +84,13 @@ const TranslatedTextarea = React.forwardRef<
             ref={resolvedRef}
             dir={textDirection}
             className={cn(
-              dynamicTextSize,
+              "text-2xl",
               "w-full pt-6 px-6 pb-0 resize-none overflow-hidden focus:outline-none bg-transparent md:min-h-[400px]",
               textDirection === "rtl" && "text-right",
               wrapperClassName
             )}
             value={text}
             onChange={handleChange}
-            onPaste={handlePaste}
             {...props}
           />
           {text && !props.readOnly && (

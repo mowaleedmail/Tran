@@ -10,14 +10,12 @@ import VoiceRecorder from "./voice-recorder";
 import TextToSpeechPlayer from "./text-to-speech";
 import debounce from "lodash/debounce";
 import { LanguagesIcon, LanguagesIconHandle } from "./ui/languages";
-import { TextareaRef } from "@/types/types";
 
 export default function TextareasContainer() {
-  const textarea1Ref = useRef<TextareaRef>(null);
-  const textarea2Ref = useRef<TextareaRef>(null);
+  const textarea1Ref = useRef<HTMLTextAreaElement>(null);
+  const textarea2Ref = useRef<HTMLTextAreaElement>(null);
   const languagesIconRef = useRef<LanguagesIconHandle>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const isSynchronizingRef = useRef<boolean>(false);
   const [wrapperCenter, setWrapperCenter] = useState(0);
 
   const [sourceText, setSourceText] = useState("");
@@ -30,63 +28,15 @@ export default function TextareasContainer() {
 
   const { translateText, isTranslating, cancelTranslation } = useTranslation();
 
-  // Synchronize both textarea heights to be the same
-  useEffect(() => {
-    // Only run synchronization on medium and larger screens
-    if (window.innerWidth < 768) return;
+  // Track source text length for synchronization
+  const handleSourceTextLength = (length: number) => {
+    setSourceLength(length);
+  };
 
-    // Skip rapid synchronization during typing
-    if (isSynchronizingRef.current) return;
-
-    // Reset heights when both texts are empty
-    if (!sourceText.trim() && !translatedText.trim() && textarea1Ref.current && textarea2Ref.current) {
-      const minHeight = '400px';
-      textarea1Ref.current.style.height = minHeight;
-      textarea2Ref.current.style.height = minHeight;
-      textarea1Ref.current.style.minHeight = minHeight;
-      textarea2Ref.current.style.minHeight = minHeight;
-      return;
-    }
-
-    if (textarea1Ref.current && textarea2Ref.current) {
-      isSynchronizingRef.current = true;
-
-      // Use a more significant delay to avoid race conditions with typing
-      setTimeout(() => {
-        // Make sure refs are still valid within the timeout
-        if (!textarea1Ref.current || !textarea2Ref.current) {
-          isSynchronizingRef.current = false;
-          return;
-        }
-
-        // Only sync heights if there's a significant difference (more than 20px)
-        // to avoid constant small adjustments during typing
-        const height1 = textarea1Ref.current.scrollHeight || 0;
-        const height2 = textarea2Ref.current.scrollHeight || 0;
-        const heightDifference = Math.abs(height1 - height2);
-
-        if (heightDifference > 20) {
-          // Use the maximum height for both textareas
-          const maxHeight = Math.max(height1, height2, 400); // Ensure minimum height of 400px
-
-          // Apply the same height to both textareas using the enhanced ref method
-          if (textarea1Ref.current.autoResizeTextarea) {
-            textarea1Ref.current.autoResizeTextarea(maxHeight);
-          } else {
-            textarea1Ref.current.style.height = `${maxHeight}px`;
-          }
-
-          if (textarea2Ref.current.autoResizeTextarea) {
-            textarea2Ref.current.autoResizeTextarea(maxHeight);
-          } else {
-            textarea2Ref.current.style.height = `${maxHeight}px`;
-          }
-        }
-
-        isSynchronizingRef.current = false;
-      }, 300); // Longer delay to ensure content stabilizes first
-    }
-  }, [sourceText, translatedText]);
+  // Track translated text length for synchronization
+  const handleTranslatedTextLength = (length: number) => {
+    setTranslatedLength(length);
+  };
 
   // move detectLanguage above debouncedTranslateAndDetect to fix linter error
   const detectLanguage = useCallback(async (text: string): Promise<string> => {
@@ -109,16 +59,6 @@ export default function TextareasContainer() {
     }
   }, [sourceLanguage]);
 
-  // Track source text length for synchronization
-  const handleSourceTextLength = (length: number) => {
-    setSourceLength(length);
-  };
-
-  // Track translated text length for synchronization
-  const handleTranslatedTextLength = (length: number) => {
-    setTranslatedLength(length);
-  };
-
   // Debounced translate + detect language to limit API calls when typing
   const debouncedTranslateAndDetect = useMemo(
     () =>
@@ -126,16 +66,6 @@ export default function TextareasContainer() {
         if (!text.trim()) {
           setTranslatedText("");
           return;
-        }
-
-        // Store current height before translation
-        let currentHeight = 0;
-        if (textarea2Ref.current && window.innerWidth >= 768) {
-          currentHeight = textarea2Ref.current.offsetHeight;
-          // Apply min-height to prevent shrinking during translation
-          if (currentHeight > 0) {
-            textarea2Ref.current.style.minHeight = `${currentHeight}px`;
-          }
         }
 
         // detect user language
@@ -179,58 +109,10 @@ export default function TextareasContainer() {
     cancelTranslation();
     debouncedTranslateAndDetect.cancel();
 
-    // Check if this is a significant paste operation (sudden large text increase)
-    const isPasteOperation = text.length > sourceText.length + 50;
-
     setSourceText(text);
 
-    // Don't clear translated text immediately to prevent textarea shrinking
-    // Only clear if the source text is empty
     if (!text.trim()) {
       setTranslatedText("");
-
-      // Reset heights when text is cleared
-      if (textarea1Ref.current && textarea2Ref.current) {
-        // Reset to minimum height
-        const minHeight = window.innerWidth >= 768 ? '400px' : 'auto';
-        textarea1Ref.current.style.height = minHeight;
-        textarea2Ref.current.style.height = minHeight;
-        textarea1Ref.current.style.minHeight = minHeight;
-        textarea2Ref.current.style.minHeight = minHeight;
-
-        // If the component has autoResizeTextarea method, use it
-        if (textarea1Ref.current.autoResizeTextarea) {
-          textarea1Ref.current.autoResizeTextarea(400);
-        }
-        if (textarea2Ref.current.autoResizeTextarea) {
-          textarea2Ref.current.autoResizeTextarea(400);
-        }
-      }
-    } else if (isPasteOperation) {
-      // Special handling for paste operations
-      if (textarea1Ref.current) {
-        // Wait a moment for the paste to complete rendering
-        setTimeout(() => {
-          if (!textarea1Ref.current) return;
-
-          // First reset height to get accurate measurement
-          textarea1Ref.current.style.height = 'auto';
-
-          // Get exact content height
-          const contentHeight = Math.max(
-            textarea1Ref.current.scrollHeight,
-            window.innerWidth >= 768 ? 400 : 200
-          );
-
-          // Set exact content height without extra space
-          textarea1Ref.current.style.height = `${contentHeight}px`;
-
-          // Apply same height to second textarea for consistency
-          if (textarea2Ref.current) {
-            textarea2Ref.current.style.height = `${contentHeight}px`;
-          }
-        }, 10);
-      }
     }
 
     if (text.trim()) {
@@ -257,70 +139,6 @@ export default function TextareasContainer() {
     }
   };
 
-  // Preserve height during translation
-  useEffect(() => {
-    // Skip on small screens
-    if (window.innerWidth < 768) return;
-
-    if (isTranslating && textarea2Ref.current) {
-      // Store current height before translation starts
-      const currentHeight = textarea2Ref.current.offsetHeight;
-      if (currentHeight > 0) {
-        // Apply min-height to prevent shrinking
-        textarea2Ref.current.style.minHeight = `${currentHeight}px`;
-      }
-    } else if (!isTranslating && textarea2Ref.current) {
-      // Reset min-height when translation is complete to allow normal resizing
-      // Keep a small delay to ensure the text is rendered first
-      setTimeout(() => {
-        if (textarea2Ref.current) {
-          // On medium screens, still maintain the minimum height
-          const minHeight = window.innerWidth >= 768 ? '400px' : 'auto';
-          textarea2Ref.current.style.minHeight = minHeight;
-
-          // After resetting, re-synchronize heights
-          if (textarea1Ref.current && textarea2Ref.current && window.innerWidth >= 768) {
-            const height1 = textarea1Ref.current.scrollHeight || 0;
-            const height2 = textarea2Ref.current.scrollHeight || 0;
-            const maxHeight = Math.max(height1, height2, 400);
-
-            textarea1Ref.current.style.height = `${maxHeight}px`;
-            textarea2Ref.current.style.height = `${maxHeight}px`;
-          }
-        }
-      }, 150);
-    }
-  }, [isTranslating]);
-
-  // Add responsive listener to handle window resizing
-  useEffect(() => {
-    const handleResize = () => {
-      // Clear synchronized heights on small screens
-      if (window.innerWidth < 768) {
-        if (textarea1Ref.current) {
-          textarea1Ref.current.style.height = 'auto';
-        }
-        if (textarea2Ref.current) {
-          textarea2Ref.current.style.height = 'auto';
-        }
-      }
-      // Re-synchronize on medium+ screens
-      else if (textarea1Ref.current && textarea2Ref.current) {
-        const height1 = textarea1Ref.current.scrollHeight || 0;
-        const height2 = textarea2Ref.current.scrollHeight || 0;
-        const maxHeight = Math.max(height1, height2, 400);
-
-        textarea1Ref.current.style.height = `${maxHeight}px`;
-        textarea2Ref.current.style.height = `${maxHeight}px`;
-      }
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => {
-      window.removeEventListener('resize', handleResize);
-    };
-  }, []);
-
   // Calculate horizontal center of textarea2 wrapper for icon placement
   useLayoutEffect(() => {
     function updateWrapperCenter() {
@@ -335,7 +153,7 @@ export default function TextareasContainer() {
   }, []);
 
   return (
-    <div className="flex flex-col h-auto md:min-h-[400px] container rounded-none md:rounded-lg border-none md:border bg-card border-gray-200">
+    <div className="flex flex-col md:min-h-[400px] container rounded-none md:rounded-lg border-none md:border bg-card border-gray-200">
       <div className="sticky top-[70px] z-40 bg-card w-full shadow-sm">
         <div className="flex flex-row gap-1 items-center justify-stretch border-b border-zinc-200 px-3 py-3">
           <LanguageSelection
