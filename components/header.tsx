@@ -29,7 +29,7 @@ const Header: React.FC = () => {
       {/* Logo */}
       <div className="flex flex-row items-center justify-between w-full max-w-6xl mx-auto px-[25px] md:px-[0px]">
         <div className="flex flex-row items-start justify-center">
-          <LogoSvg width={70} height={24} />
+          <LogoSvg width={73} height={24} />
         </div>
   
         {/* Action Buttons */}

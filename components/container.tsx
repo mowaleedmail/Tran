@@ -21,7 +21,7 @@ export default function TextareasContainer() {
 
   const [sourceText, setSourceText] = useState("");
   const [translatedText, setTranslatedText] = useState("");
-  const [sourceLanguage, setSourceLanguage] = useState("en");
+  const [sourceLanguage, setSourceLanguage] = useState("de");
   const [targetLanguage, setTargetLanguage] = useState("ar");
   const voiceId = "FTNCalFNG5bRnkkaP5Ug";
 
@@ -242,13 +242,17 @@ export default function TextareasContainer() {
           />
         </TranslatedTextarea>
 
-        <div className="relative w-full h-full" ref={wrapperRef}>
+        {/* Hide translated textarea if it's empty and screen is small */}
+        <div 
+          className="relative w-full h-full" 
+          ref={wrapperRef}
+        >
           <TranslatedTextarea
             ref={textarea2Ref}
             value={translatedText}
             onChange={() => { }}
             readOnly
-            className="md:focus-within:rounded-br-lg relative w-full"
+            className={`md:focus-within:rounded-br-lg relative w-full ${!translatedText.trim() && !isMdOrLarger ? 'hidden' : ''}`}
             wrapperClassName="pr-9 relative w-full"
             buttonStyle="rounded-br-lg"
             onSyncHeight={handleTranslatedTextLength}

@@ -27,7 +27,7 @@ export async function POST(request: Request) {
       responseText.toLowerCase().includes(lang.label.toLowerCase())
     );
     // Default to English if no match found
-    const languageCode = matched ? matched.value : 'en';
+    const languageCode = matched ? matched.value : 'de';
     return NextResponse.json({ languageCode });
   } catch (error) {
     console.error("Language detection error:", error);

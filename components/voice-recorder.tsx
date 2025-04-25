@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Mic, StopCircle } from "lucide-react";
 
 const VoiceRecorder: React.FC<{ onTranscript: (text: string) => void }> = ({
@@ -8,10 +8,18 @@ const VoiceRecorder: React.FC<{ onTranscript: (text: string) => void }> = ({
 }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
+
+  // Detect iOS platform
+  useEffect(() => {
+    const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    setIsIOS(iOS);
+  }, []);
 
   const toggleRecording = async () => {
     if (isRecording) {
@@ -25,7 +33,21 @@ const VoiceRecorder: React.FC<{ onTranscript: (text: string) => void }> = ({
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
-      const mediaRecorder = new MediaRecorder(stream);
+      
+      // Use different MIME types based on platform
+      const mimeType = isIOS ? 'audio/mp4' : 'audio/webm';
+      
+      // Check if the browser supports the selected MIME type
+      const options: MediaRecorderOptions = {};
+      if (MediaRecorder.isTypeSupported(mimeType)) {
+        options.mimeType = mimeType;
+      } else if (MediaRecorder.isTypeSupported('audio/aac')) {
+        options.mimeType = 'audio/aac';
+      } else if (MediaRecorder.isTypeSupported('audio/wav')) {
+        options.mimeType = 'audio/wav';
+      }
+      
+      const mediaRecorder = new MediaRecorder(stream, options);
 
       audioChunksRef.current = [];
       mediaRecorder.ondataavailable = (event: BlobEvent) => {
@@ -33,8 +55,9 @@ const VoiceRecorder: React.FC<{ onTranscript: (text: string) => void }> = ({
       };
 
       mediaRecorder.onstop = async () => {
+        // Use the same MIME type that was used for recording
         const audioBlob = new Blob(audioChunksRef.current, {
-          type: "audio/webm",
+          type: mediaRecorder.mimeType || 'audio/mp4'
         });
         audioChunksRef.current = [];
         await handleTranscription(audioBlob);
@@ -46,6 +69,7 @@ const VoiceRecorder: React.FC<{ onTranscript: (text: string) => void }> = ({
       setIsRecording(true);
     } catch (error) {
       console.error("Error accessing microphone:", error);
+      alert("Error accessing microphone. Please check permissions and try again.");
     }
   };
 
@@ -69,8 +93,13 @@ const VoiceRecorder: React.FC<{ onTranscript: (text: string) => void }> = ({
     try {
       setIsLoading(true);
 
-      const file = new File([audioBlob], "recording.webm", {
-        type: "audio/webm",
+      // Use the detected file type from the Blob
+      const fileExtension = audioBlob.type.includes('mp4') ? 'mp4' : 
+                          audioBlob.type.includes('aac') ? 'aac' : 
+                          audioBlob.type.includes('wav') ? 'wav' : 'webm';
+      
+      const file = new File([audioBlob], `recording.${fileExtension}`, {
+        type: audioBlob.type
       });
 
       const formData = new FormData();
